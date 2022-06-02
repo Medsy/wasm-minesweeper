@@ -3,6 +3,7 @@ package Game
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"time"
 )
 
@@ -10,60 +11,89 @@ type Pos struct {
 	X, Y int
 }
 
+type PosList []Pos
+
 type Minesweeper struct {
 	Width, Height int
-	OpenFields    []Pos
-	Mines         []Pos
-	Flags         []Pos
-	Lost          bool
+	OpenFields    PosList
+	Mines         PosList
+	Flags         PosList
+	State         int // -1 lost, 0 playing, 1 won
+	tileColor     int // maybe just use a slice of tile colors
 }
 
 func New(w, h, c int) *Minesweeper {
+	// temp random difficulty
+	w, h, c = difficulty(rand.Intn(4))
+
 	m := &Minesweeper{
 		Width:  w,
 		Height: h,
 	}
 	m.generateMines(c)
+	m.tileColor = rand.Intn(9)
 
 	return m
 }
 
 func (m *Minesweeper) generateMines(c int) {
-	for i := 0; i < c; i++ {
-		m.Mines = append(m.Mines, Pos{
-			X: rand.Intn(m.Width),
-			Y: rand.Intn(m.Height),
-		})
+	for i := 0; i < c; {
+		x := rand.Intn(m.Width)
+		y := rand.Intn(m.Height)
+
+		if !m.isMine(x, y) {
+			m.Mines = append(m.Mines, Pos{
+				X: x,
+				Y: y,
+			})
+
+			i++
+		}
 	}
 }
 
-func (m *Minesweeper) Open(x, y int) (mineCount int, lose bool, isFlag bool) {
-	if m.isFlag(x, y) || m.isOpen(x, y) || m.Lost {
-		return -1, false, true
+func (m *Minesweeper) Open(x, y int) int {
+	mineCount := m.neighbourMineCount(x, y)
+	flagCount := m.neighbourFlagCount(x, y)
+	neighbors := m.getNeighbours(x, y)
+
+	if m.isFlag(x, y) || m.State != 0 {
+		return -1
+	}
+
+	if m.isOpen(x, y) {
+		if mineCount == flagCount {
+			for _, n := range neighbors {
+				if !m.isFlag(n.X, n.Y) && !m.isOpen(n.X, n.Y) {
+					m.Open(n.X, n.Y)
+					if m.isMine(n.X, n.Y) {
+						m.State = -1
+					}
+				}
+			}
+		}
+		return -1
 	}
 
 	m.OpenFields = append(m.OpenFields, Pos{x, y})
 	if m.isMine(x, y) {
-		fmt.Println("You lost!")
-		m.Lost = true
-		return -1, true, false
+		m.State = -1
+		return m.State
 	}
-	mineCount = m.getNeighbourMines(x, y)
 
 	if mineCount == 0 {
-		neighbors := m.getNeighbours(x, y)
 		for _, n := range neighbors {
 			if !m.isOpen(n.X, n.Y) {
-				mineCount, _, _ = m.Open(n.X, n.Y)
+				mineCount = m.Open(n.X, n.Y)
 			}
 		}
 	}
 
-	return mineCount, false, false
+	return mineCount
 }
 
 func (m *Minesweeper) ToggleFlag(x, y int) {
-	if m.Lost {
+	if m.State != 0 || m.isOpen(x, y) {
 		return
 	}
 
@@ -112,11 +142,22 @@ func (m *Minesweeper) getNeighbours(x, y int) []Pos {
 	return neighbors
 }
 
-func (m *Minesweeper) getNeighbourMines(x, y int) int {
+func (m *Minesweeper) neighbourMineCount(x, y int) int {
 	neighbors := m.getNeighbours(x, y)
 	count := 0
 	for _, n := range neighbors {
 		if m.isMine(n.X, n.Y) {
+			count++
+		}
+	}
+	return count
+}
+
+func (m *Minesweeper) neighbourFlagCount(x, y int) int {
+	neighbors := m.getNeighbours(x, y)
+	count := 0
+	for _, n := range neighbors {
+		if m.isFlag(n.X, n.Y) {
 			count++
 		}
 	}
@@ -133,23 +174,24 @@ func (m *Minesweeper) isOpen(x, y int) bool {
 }
 
 func (m *Minesweeper) Print() string {
+	m.checkWin()
 	string := ""
 	for y := 0; y < m.Height; y++ {
 		for x := 0; x < m.Width; x++ {
 			if !m.isOpen(x, y) {
-				if m.Lost && m.isMine(x, y) {
+				if m.State == -1 && m.isMine(x, y) {
 					string += "💣  "
 				} else if m.isFlag(x, y) {
 					string += "🚩  "
 				} else {
-					string += "🟪  "
+					string += fmt.Sprintf("%s  ", tileColour(m.tileColor))
 
 				}
 			} else if m.isMine(x, y) {
 				string += "💣  "
 			} else {
-				if m.getNeighbourMines(x, y) > 0 {
-					string += "" + emoji(m.getNeighbourMines(x, y)) + " "
+				if m.neighbourMineCount(x, y) > 0 {
+					string += "" + emoji(m.neighbourMineCount(x, y)) + " "
 				} else {
 					string += "⬜️  "
 				}
@@ -159,6 +201,27 @@ func (m *Minesweeper) Print() string {
 	}
 
 	return string
+}
+
+func (m *Minesweeper) checkWin() {
+	m.Flags.sort()
+	m.Mines.sort()
+
+	if m.Width*m.Height-len(m.Mines) == len(m.OpenFields) {
+		if compare(m.Mines, m.Flags) {
+			m.State = 1
+		}
+	}
+}
+
+func difficulty(num int) (int, int, int) {
+	switch num {
+	case 1:
+		return 16, 16, 40
+	case 2:
+		return 30, 19, 99
+	}
+	return 10, 10, 10
 }
 
 func emoji(num int) string {
@@ -181,6 +244,52 @@ func emoji(num int) string {
 		return "8️⃣"
 	}
 	return ""
+}
+
+func tileColour(num int) string {
+	switch num {
+	case 1:
+		return "🟥"
+	case 2:
+		return "🟦"
+	case 3:
+		return "🟧"
+	case 4:
+		return "🟪"
+	case 5:
+		return "🟨"
+	case 6:
+		return "🟩"
+	case 7:
+		return "❇️"
+	case 8:
+		return "🔳"
+	case 9:
+		return "🔲"
+
+	}
+	return "⬛️"
+}
+
+func (p *PosList) sort() {
+	sort.Slice(*p, func(i, j int) bool {
+		if (*p)[i].X == (*p)[j].X {
+			return (*p)[i].Y < (*p)[j].Y
+		}
+		return (*p)[i].X < (*p)[j].X
+	})
+}
+
+func compare(a, b PosList) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 //func main() {
