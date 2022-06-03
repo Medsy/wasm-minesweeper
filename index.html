@@ -86,17 +86,15 @@
                     element.innerText = data[y][x];
 
                     element.addEventListener("touch", function (e){
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.stopImmediatePropagation();
 
-                        openCell(x, y);
+                        console.log("touch", x, y);
+                        toggleFlag(x, y);
                         render();
                     });
 
                     element.addEventListener("click", function (e) {
                         e.preventDefault();
-                        // console.log("open", x, y);
+                        console.log("click", x, y);
                         openCell(x, y);
                         render();
                     });
@@ -105,7 +103,7 @@
                         e.preventDefault();
 
                         toggleFlag(x, y);
-                        // console.log("flag", x, y);
+                        console.log("right-click", x, y);
                         render();
                     });
 
