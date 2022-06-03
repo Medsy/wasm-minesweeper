@@ -1,2 +1,4 @@
 title: Minesweeper
 description: Minesweeper built with go and wasm
+
+theme: jekyll-theme-cayman
