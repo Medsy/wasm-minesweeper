@@ -11,6 +11,11 @@
             font-size: 200%;
             font-family: sans-serif;
             text-align: center;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         #root{
             margin-top: 10px;
@@ -52,7 +57,7 @@
                 render();
             }
         );
-        
+
         function render() {
             let status = checkStatus();
             if (status === 1) {
