@@ -93,19 +93,19 @@
                     element.href = "#";
                     element.innerText = data[y][x];
 
-                    element.addEventListener("touch", function (e){
+                    element.addEventListener("click", function (e){
 
-                        toggleFlag(x, y);
+                        openCell(x, y);
                         render();
                     });
 
-                    element.addEventListener("mousedown", function (e) {
+                    element.addEventListener("touchstart", function (e) {
                         e.preventDefault();
                         startTimer()
                         render();
                     });
 
-                    element.addEventListener("mouseup", function (e) {
+                    element.addEventListener("touchend", function (e) {
                         e.preventDefault();
                         et = stopTimer();
 
