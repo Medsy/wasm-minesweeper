@@ -63,6 +63,9 @@
             }
         );
 
+        let timer = null;
+        let time = 0;
+
         function render() {
             let status = checkStatus();
             if (status === 1) {
@@ -92,23 +95,31 @@
 
                     element.addEventListener("touch", function (e){
 
-                        console.log("touch", x, y);
                         toggleFlag(x, y);
                         render();
                     });
 
-                    element.addEventListener("click", function (e) {
+                    element.addEventListener("mousedown", function (e) {
                         e.preventDefault();
-                        console.log("click", x, y);
-                        openCell(x, y);
+                        startTimer()
+                        render();
+                    });
+
+                    element.addEventListener("mouseup", function (e) {
+                        e.preventDefault();
+                        et = stopTimer();
+
+                        if (et >= 3) {
+                            toggleFlag(x, y);
+                        } else {
+                            openCell(x, y);
+                        }
                         render();
                     });
 
                     element.addEventListener("contextmenu", function (e) {
                         e.preventDefault();
-
                         toggleFlag(x, y);
-                        console.log("right-click", x, y);
                         render();
                     });
 
@@ -123,6 +134,20 @@
             render();
         }
 
+        function startTimer() {
+                timer = setInterval(function () {
+                    time++;
+                }, 100);
+        }
+
+        function stopTimer() {
+            endTime = time;
+            clearInterval(timer);
+            time = 0;
+            return endTime;
+        }
+
+
     </script>
 
 </head>
@@ -135,6 +160,7 @@
 
     </div>
     <div id="status"></div>
+    <div id="time"></div>
 
 
 </body>
